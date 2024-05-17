@@ -12,10 +12,18 @@ import (
 )
 
 type model struct {
-	cursor              int
-	choices             []string
-	confirmDeleteFolder bool
+	cursor  int
+	choices []string
+	step    string
+	// stopwatch stopwatch.Model
 }
+
+// type keymap struct {
+// 	start key.Binding
+// 	stop  key.Binding
+// 	reset key.Binding
+// 	quit  key.Binding
+// }
 
 func initialModel() model {
 	return model{
@@ -61,7 +69,7 @@ func deleteFolder(m *model) {
 	}
 	runBashCommand(cmd)
 
-	m.confirmDeleteFolder = false
+	m.step = "downloading"
 	downloadLatest(m)
 }
 
@@ -75,7 +83,7 @@ func downloadLatest(m *model) {
 
 	_, err := os.Stat(pathToFolder)
 	if !os.IsNotExist(err) {
-		m.confirmDeleteFolder = true
+		m.step = "confirmDeleteFolder"
 		return
 	}
 
@@ -98,18 +106,28 @@ func downloadLatest(m *model) {
 	}
 
 	runBashCommand(cmd)
+	var updatedChoices []string
+	for _, choice := range m.choices {
+		if choice == "Download Latest" {
+			choice = "Check Stage Download Status"
+			updatedChoices = append(updatedChoices, choice)
+		} else {
+			updatedChoices = append(updatedChoices, choice)
+		}
+	}
+
+	m.choices = updatedChoices
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	if m.confirmDeleteFolder {
+	if m.step == "confirmDeleteFolder" {
 		switch msg := msg.(type) {
 		case tea.KeyMsg:
 			switch msg.String() {
 			case "y":
 				deleteFolder(&m)
-				m.confirmDeleteFolder = false
 			case "n":
-				m.confirmDeleteFolder = false
+				m.step = ""
 			}
 		}
 
@@ -132,7 +150,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "enter", " ":
 			switch m.cursor {
 			case 0:
-				downloadLatest(&m)
+				m.step = "confirmDeleteFolder"
 			case 1:
 				log.Println("Load Stage")
 			}
@@ -143,12 +161,21 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m model) View() string {
-	if m.confirmDeleteFolder {
-		return "Are you sure you want to delete the existing folder? (y/n)\n"
-		// return "\033[H\033[2J" + "Are you sure you want to delete the existing folder? (y/n)\n"
+	s := "\033[H\033[2J"
+
+	if m.step == "confirmDeleteFolder" {
+		s += "Are you sure you want to delete the existing folder? (y/n)\n"
+		return s
 	}
 
-	s := "\033[H\033[2J" + "What should we do today?\n\n"
+	if m.step == "downloading" {
+		s = "Starting download!\n"
+		s += "This will take a while. Please wait...\n"
+		s += "You can check the status by running\n"
+		s += "`tmux a -t download-latest-session`\n\n"
+	}
+
+	s += "What should we do today?\n\n"
 
 	for i, choice := range m.choices {
 		cursor := " "

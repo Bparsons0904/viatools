@@ -9,6 +9,7 @@ import (
 	"syscall"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 )
 
 type model struct {
@@ -160,22 +161,33 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+var (
+	pinkColor   = lipgloss.NewStyle().Foreground(lipgloss.Color("205")).Bold(true).Align(lipgloss.Left)
+	blueColor   = lipgloss.NewStyle().Foreground(lipgloss.Color("39")).Bold(true).Align(lipgloss.Left)
+	noticeStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("169")).Bold(true).Align(lipgloss.Left)
+	whiteColor  = lipgloss.NewStyle().Foreground(lipgloss.Color("255")).Align(lipgloss.Left)
+	mainStyle   = lipgloss.NewStyle()
+)
+
 func (m model) View() string {
+	// Clear the screen
 	s := "\033[H\033[2J"
 
 	if m.step == "confirmDeleteFolder" {
-		s += "Are you sure you want to delete the existing folder? (y/n)\n"
+		s += fmt.Sprintf("%s\n", "Are you sure you want to delete the existing folder? (y/n)")
 		return s
 	}
 
 	if m.step == "downloading" {
-		s = "Starting download!\n"
-		s += "This will take a while. Please wait...\n"
-		s += "You can check the status by running\n"
-		s += "`tmux a -t download-latest-session`\n\n"
+		s += fmt.Sprintf("%s\n%s\n%s\n%s\n",
+			noticeStyle.Render("Starting download!"),
+			blueColor.Render("This will take a while. Please wait..."),
+			blueColor.Render("You can check the status by running"),
+			pinkColor.Render("`tmux a -t download-latest-session`"),
+		)
 	}
 
-	s += "What should we do today?\n\n"
+	s += fmt.Sprintf("%s\n\n", "What should we do today?")
 
 	for i, choice := range m.choices {
 		cursor := " "
@@ -183,16 +195,20 @@ func (m model) View() string {
 			cursor = ">"
 		}
 
-		s += fmt.Sprintf("%s %s\n", cursor, choice)
+		choiceStyle := whiteColor.Copy()
+		if m.cursor == i {
+			choiceStyle = choiceStyle.Bold(true).Foreground(lipgloss.Color("205"))
+		}
+
+		s += fmt.Sprintf("%s %s\n", cursor, choiceStyle.Render(choice))
 	}
 
-	s += "\nPress q to quit.\n"
+	s += fmt.Sprintf("\n%s\n", whiteColor.Render("Use the arrow keys to navigate. Press Enter to select."))
 
-	return s
+	return mainStyle.Render(s)
 }
 
 func main() {
-	// Handle terminal reset on exit
 	defer func() {
 		if r := recover(); r != nil {
 			fmt.Fprintln(os.Stderr, "Program panicked:", r)
@@ -200,7 +216,6 @@ func main() {
 		resetTerminal()
 	}()
 
-	// Capture SIGINT and SIGTERM signals to reset terminal
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
 	go func() {
@@ -226,7 +241,6 @@ func resetTerminal() {
 	}
 }
 
-// isTerminal checks if the given file descriptor is a terminal
 func isTerminal(f *os.File) bool {
 	stat, err := f.Stat()
 	if err != nil {

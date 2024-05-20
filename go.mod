@@ -3,6 +3,7 @@ module viatools
 go 1.22.1
 
 require (
+	github.com/charmbracelet/bubbles v0.18.0
 	github.com/charmbracelet/bubbletea v0.26.1
 	github.com/charmbracelet/lipgloss v0.9.1
 )

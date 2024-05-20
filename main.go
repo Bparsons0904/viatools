@@ -16,15 +16,11 @@ type model struct {
 	cursor  int
 	choices []string
 	step    string
-	// stopwatch stopwatch.Model
 }
 
-// type keymap struct {
-// 	start key.Binding
-// 	stop  key.Binding
-// 	reset key.Binding
-// 	quit  key.Binding
-// }
+func init() {
+	fmt.Print("\033[H\033[2J")
+}
 
 func initialModel() model {
 	return model{
@@ -164,30 +160,31 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 var (
 	pinkColor   = lipgloss.NewStyle().Foreground(lipgloss.Color("205")).Bold(true).Align(lipgloss.Left)
 	blueColor   = lipgloss.NewStyle().Foreground(lipgloss.Color("39")).Bold(true).Align(lipgloss.Left)
-	noticeStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("169")).Bold(true).Align(lipgloss.Left)
+	noticeStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("255")).Bold(true).Align(lipgloss.Left)
 	whiteColor  = lipgloss.NewStyle().Foreground(lipgloss.Color("255")).Align(lipgloss.Left)
 	mainStyle   = lipgloss.NewStyle()
+	redColor    = lipgloss.NewStyle().Foreground(lipgloss.Color("196")).Bold(true).Align(lipgloss.Left)
+	greenColor  = lipgloss.NewStyle().Foreground(lipgloss.Color("46")).Bold(true).Align(lipgloss.Left)
 )
 
 func (m model) View() string {
-	// Clear the screen
-	s := "\033[H\033[2J"
+	s := ""
 
 	if m.step == "confirmDeleteFolder" {
-		s += fmt.Sprintf("%s\n", "Are you sure you want to delete the existing folder? (y/n)")
+		s += fmt.Sprintf("Are you sure you want to delete the existing folder? (%s/%s)\n", greenColor.Render("y"), redColor.Render("n"))
 		return s
 	}
 
 	if m.step == "downloading" {
-		s += fmt.Sprintf("%s\n%s\n%s\n%s\n",
-			noticeStyle.Render("Starting download!"),
+		s += fmt.Sprintf("%s\n%s\n%s\n%s\n\n\n",
+			greenColor.Render("Starting download!"),
 			blueColor.Render("This will take a while. Please wait..."),
 			blueColor.Render("You can check the status by running"),
 			pinkColor.Render("`tmux a -t download-latest-session`"),
 		)
 	}
 
-	s += fmt.Sprintf("%s\n\n", "What should we do today?")
+	s += fmt.Sprintf("%s\n\n", noticeStyle.Render("What should we do today?"))
 
 	for i, choice := range m.choices {
 		cursor := " "
@@ -197,13 +194,13 @@ func (m model) View() string {
 
 		choiceStyle := whiteColor.Copy()
 		if m.cursor == i {
-			choiceStyle = choiceStyle.Bold(true).Foreground(lipgloss.Color("205"))
+			choiceStyle = blueColor.Copy()
 		}
 
 		s += fmt.Sprintf("%s %s\n", cursor, choiceStyle.Render(choice))
 	}
 
-	s += fmt.Sprintf("\n%s\n", whiteColor.Render("Use the arrow keys to navigate. Press Enter to select."))
+	s += fmt.Sprintf("\n%s\n%s\n", whiteColor.Render("Use the arrow keys to navigate. Press Enter to select."), blueColor.Render("Press q to <C-c> to exit"))
 
 	return mainStyle.Render(s)
 }
